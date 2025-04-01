@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Costes de Impresión 3D</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: linear-gradient(135deg, #0a0a0a, #1a2a3a);
+            color: #4ade80;
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            background-color: #1f2937;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 1000px;
+            width: 100%;
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            color: #86efac;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+            text-shadow: 0 0 10px rgba(134, 239, 172, 0.5);
+            animation: glow 2s infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 5px rgba(134, 239, 172, 0.5); }
+            to { text-shadow: 0 0 15px rgba(134, 239, 172, 0.8); }
+        }
+
+        .grid {
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            transition: transform 0.3s;
+        }
+
+        .input-group:hover {
+            transform: scale(1.02);
+        }
+
+        label {
+            font-size: 0.9rem;
+        }
+
+        label.required::after {
+            content: ' *';
+            color: #ef4444;
+        }
+
+        label.optional {
+            color: #fbbf24;
+        }
+
+        input, select {
+            padding: 0.75rem;
+            background-color: #1e293b;
+            color: #4ade80;
+            border: 1px solid #047857;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input:focus, select:focus {
+            border-color: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+            outline: none;
+        }
+
+        input.error, select.error {
+            border-color: #b91c1c;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+
+        .input-flex {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        button {
+            padding: 0.75rem;
+            background-color: #047857;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-family: monospace;
+            transition: transform 0.2s, background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #059669;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .dropdown {
+            position: absolute;
+            background-color: #1e293b;
+            border: 1px solid #047857;
+            max-height: 250px;
+            overflow-y: auto;
+            width: 100%;
+            z-index: 10;
+            border-radius: 0.5rem;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dropdown-item {
+            padding: 0.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background-color: #064e3b;
+        }
+
+        .dropdown-item img {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .results {
+            padding: 1.5rem;
+            background-color: #1e293b;
+            border-radius: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .results h2 {
+            color: #86efac;
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .space-y {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .value {
+            color: #bbf7d0;
+            transition: color 0.3s;
+        }
+
+        .value.updated {
+            color: #22c55e;
+            animation: pulse 0.5s;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .warning {
+            color: #fbbf24;
+        }
+
+        .printer-image {
+            width: 100%;
+            max-width: 200px;
+            height: auto;
+            margin-top: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+            animation: imageFadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes imageFadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Calculadora de Costes de Impresión 3D</h1>
+        <div class="grid">
+            <div>
+                <div class="input-group">
+                    <label class="required" for="printerSearch">Impresora 3D</label>
+                    <div style="position: relative;">
+                        <input type="text" id="printerSearch" placeholder="Buscar impresora">
+                        <div id="printerDropdown" class="dropdown" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="required" for="filamentCostPerKg">Coste de Filamento (€/kg)</label>
+                    <input type="number" id="filamentCostPerKg" step="0.01">
+                </div>
+
+                <div class="input-group">
+                    <label class="required" for="filamentConsumedGrams">Gramos de Filamento</label>
+                    <input type="number" id="filamentConsumedGrams" step="1">
+                </div>
+
+                <div class="input-group">
+                    <label class="required" for="printTime">Tiempo de Impresión</label>
+                    <div class="input-flex">
+                        <input type="number" id="printTime" step="0.01">
+                        <button id="timeUnitBtn">horas</button>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="required" for="selectedRate">Tarifa Eléctrica</label>
+                    <select id="selectedRate">
+                        <option value="">Selecciona Tarifa</option>
+                        <option value="0.35">Punta (10-14 y 18-22) - 0.35€/kWh</option>
+                        <option value="0.25">Llano (08-10, 14-18, 22-24) - 0.25€/kWh</option>
+                        <option value="0.15">Valle (00-08) - 0.15€/kWh</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label class="optional" for="marginProfit">Margen de Beneficio (%)</label>
+                    <input type="number" id="marginProfit" step="1" placeholder="Ej: 30">
+                </div>
+
+                <button id="calculateBtn">Calcular Costes</button>
+            </div>
+
+            <div class="results">
+                <h2>Resultados</h2>
+                <div class="space-y">
+                    <p>Impresora: <span id="selectedPrinterInfo" class="warning">Ninguna seleccionada</span></p>
+                    <div id="printerImageContainer"></div>
+                    <p>Coste de Filamento: <span id="filamentCostResult" class="value">0€</span></p>
+                    <p>Coste de Electricidad: <span id="electricityCostResult" class="value">0€</span></p>
+                    <p>Coste de Impresora (0.25%): <span id="printerCostResult" class="value">0€</span></p>
+                    <p>Coste Total: <span id="totalCostResult" class="value">0€</span></p>
+                    <p>Precio de Venta: <span id="salePriceResult" class="value">0€</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Base de datos de impresoras con consumo, coste e imágenes (URLs públicas como ejemplo)
+        const printerDatabase = [
+            { marca: 'Prusa', modelo: 'MK3S+', consumo: 0.12, coste: 799, image: 'https://www.prusa3d.com/content/images/product/mk3splus_kit_600x600.png' },
+            { marca: 'Prusa', modelo: 'Mini+', consumo: 0.08, coste: 459, image: 'https://www.prusa3d.com/content/images/product/mini_plus_600x600.png' },
+            { marca: 'Prusa', modelo: 'XL', consumo: 0.25, coste: 1999, image: 'https://www.prusa3d.com/content/images/product/xl_600x600.png' },
+            { marca: 'Creality', modelo: 'Ender 3 V2', consumo: 0.15, coste: 229, image: 'https://cdn.shopify.com/s/files/1/0557/7973/1860/products/Ender3V2_600x.png' },
+            { marca: 'Creality', modelo: 'CR-10 V3', consumo: 0.20, coste: 499, image: 'https://www.creality.com/cdn/shop/products/CR-10_V3_600x600.png' },
+            { marca: 'Creality', modelo: 'Ender 3 S1', consumo: 0.18, coste: 349, image: 'https://www.creality.com/cdn/shop/products/Ender-3S1_600x600.png' },
+            { marca: 'Creality', modelo: 'K1', consumo: 0.22, coste: 559, image: 'https://www.creality.com/cdn/shop/products/K1_600x600.png' },
+            { marca: 'Creality', modelo: 'K1 Max', consumo: 0.30, coste: 799, image: 'https://www.creality.com/cdn/shop/products/K1_Max_600x600.png' },
+            { marca: 'Anycubic', modelo: 'Photon Mono X', consumo: 0.20, coste: 499, image: 'https://www.anycubic.com/cdn/shop/products/Photon-Mono-X_600x600.png' },
+            { marca: 'Anycubic', modelo: 'Vyper', consumo: 0.17, coste: 369, image: 'https://www.anycubic.com/cdn/shop/products/Vyper_600x600.png' },
+            { marca: 'Anycubic', modelo: 'Kobra 2 Pro', consumo: 0.19, coste: 429, image: 'https://www.anycubic.com/cdn/shop/products/Kobra-2-Pro_600x600.png' },
+            { marca: 'Elegoo', modelo: 'Mars 3', consumo: 0.18, coste: 299, image: 'https://www.elegoo.com/cdn/shop/products/Mars-3_600x600.png' },
+            { marca: 'Elegoo', modelo: 'Neptune 3 Pro', consumo: 0.16, coste: 329, image: 'https://www.elegoo.com/cdn/shop/products/Neptune-3-Pro_600x600.png' },
+            { marca: 'Ultimaker', modelo: 'S5', consumo: 0.35, coste: 5999, image: 'https://www.ultimaker.com/cdn/shop/products/S5_600x600.png' },
+            { marca: 'Ultimaker', modelo: 'S3', consumo: 0.30, coste: 3999, image: 'https://www.ultimaker.com/cdn/shop/products/S3_600x600.png' },
+            { marca: 'Formlabs', modelo: 'Form 3', consumo: 0.25, coste: 3499, image: 'https://www.formlabs.com/cdn/shop/products/Form-3_600x600.png' },
+            { marca: 'Formlabs', modelo: 'Form 3L', consumo: 0.35, coste: 9999, image: 'https://www.formlabs.com/cdn/shop/products/Form-3L_600x600.png' },
+            { marca: 'Artillery', modelo: 'Genius Pro', consumo: 0.16, coste: 299, image: 'https://www.artillery3d.com/cdn/shop/products/Genius-Pro_600x600.png' },
+            { marca: 'Artillery', modelo: 'Sidewinder X2', consumo: 0.22, coste: 399, image: 'https://www.artillery3d.com/cdn/shop/products/Sidewinder-X2_600x600.png' },
+            { marca: 'Raise3D', modelo: 'Pro2', consumo: 0.30, coste: 3999, image: 'https://www.raise3d.com/cdn/shop/products/Pro2_600x600.png' },
+            { marca: 'Raise3D', modelo: 'E2', consumo: 0.25, coste: 3499, image: 'https://www.raise3d.com/cdn/shop/products/E2_600x600.png' },
+            { marca: 'Bambu Lab', modelo: 'X1 Carbon', consumo: 0.28, coste: 1199, image: 'https://www.bambulab.com/cdn/shop/products/X1-Carbon_600x600.png' },
+            { marca: 'Bambu Lab', modelo: 'P1P', consumo: 0.20, coste: 699, image: 'https://www.bambulab.com/cdn/shop/products/P1P_600x600.png' },
+            { marca: 'Bambu Lab', modelo: 'A1 Mini', consumo: 0.15, coste: 299, image: 'https://www.bambulab.com/cdn/shop/products/A1-Mini_600x600.png' },
+            { marca: 'Bambu Lab', modelo: 'X1', consumo: 0.25, coste: 999, image: 'https://www.bambulab.com/cdn/shop/products/X1_600x600.png' }
+        ];
+
+        // Variables globales
+        let selectedPrinter = null;
+        let printTimeUnit = 'horas';
+
+        // Elementos del DOM
+        const printerSearchInput = document.getElementById('printerSearch');
+        const printerDropdown = document.getElementById('printerDropdown');
+        const filamentCostInput = document.getElementById('filamentCostPerKg');
+        const filamentGramsInput = document.getElementById('filamentConsumedGrams');
+        const printTimeInput = document.getElementById('printTime');
+        const timeUnitBtn = document.getElementById('timeUnitBtn');
+        const selectedRateSelect = document.getElementById('selectedRate');
+        const marginProfitInput = document.getElementById('marginProfit');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const filamentCostResult = document.getElementById('filamentCostResult');
+        const electricityCostResult = document.getElementById('electricityCostResult');
+        const printerCostResult = document.getElementById('printerCostResult');
+        const totalCostResult = document.getElementById('totalCostResult');
+        const salePriceResult = document.getElementById('salePriceResult');
+        const selectedPrinterInfo = document.getElementById('selectedPrinterInfo');
+        const printerImageContainer = document.getElementById('printerImageContainer');
+
+        // Filtrar impresoras
+        function filterPrinters(searchText) {
+            if (!searchText) return [];
+            return printerDatabase.filter(printer => 
+                `${printer.marca} ${printer.modelo}`.toLowerCase().includes(searchText.toLowerCase())
+            );
+        }
+
+        // Mostrar dropdown con imágenes
+        function showPrinterDropdown(printers) {
+            printerDropdown.innerHTML = '';
+            printers.forEach(printer => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                const img = document.createElement('img');
+                img.src = printer.image;
+                img.alt = `${printer.marca} ${printer.modelo}`;
+                const text = document.createElement('span');
+                text.textContent = `${printer.marca} ${printer.modelo} - ${printer.consumo} kW (${printer.coste}€)`;
+                item.appendChild(img);
+                item.appendChild(text);
+                item.addEventListener('click', () => {
+                    selectedPrinter = printer;
+                    printerSearchInput.value = '';
+                    printerDropdown.style.display = 'none';
+                    selectedPrinterInfo.textContent = `${printer.marca} ${printer.modelo} (${printer.coste}€)`;
+                    selectedPrinterInfo.className = '';
+                    updatePrinterImage(printer.image);
+                    validateField(printerSearchInput);
+                });
+                printerDropdown.appendChild(item);
+            });
+            printerDropdown.style.display = printers.length > 0 ? 'block' : 'none';
+        }
+
+        // Actualizar imagen de la impresora seleccionada
+        function updatePrinterImage(imageUrl) {
+            printerImageContainer.innerHTML = '';
+            if (imageUrl) {
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = 'Impresora seleccionada';
+                img.className = 'printer-image';
+                printerImageContainer.appendChild(img);
+            }
+        }
+
+        // Cambiar unidad de tiempo
+        function toggleTimeUnit() {
+            printTimeUnit = printTimeUnit === 'horas' ? 'minutos' : 'horas';
+            timeUnitBtn.textContent = printTimeUnit;
+        }
+
+        // Ajustar tiempo
+        function adjustedPrintTime() {
+            const time = parseFloat(printTimeInput.value) || 0;
+            return printTimeUnit === 'minutos' ? time / 60 : time;
+        }
+
+        // Validar campo
+        function validateField(input) {
+            if (!input.value && input.required) {
+                input.classList.add('error');
+                return false;
+            }
+            input.classList.remove('error');
+            return true;
+        }
+
+        // Calcular costes con animación
+        function calculateCosts() {
+            const validPrinter = selectedPrinter !== null;
+            const validFilamentCost = validateField(filamentCostInput);
+            const validFilamentGrams = validateField(filamentGramsInput);
+            const validTime = validateField(printTimeInput);
+            const validRate = validateField(selectedRateSelect);
+
+            if (!validPrinter || !validFilamentCost || !validFilamentGrams || !validTime || !validRate) {
+                alert('Complete todos los campos obligatorios.');
+                return;
+            }
+
+            const filamentCostPerKg = parseFloat(filamentCostInput.value);
+            const filamentConsumedGrams = parseFloat(filamentGramsInput.value);
+            const printTime = adjustedPrintTime();
+            const electricityRate = parseFloat(selectedRateSelect.value);
+            const marginProfit = parseFloat(marginProfitInput.value || 0);
+
+            const filamentCostCalc = (filamentCostPerKg / 1000) * filamentConsumedGrams;
+            const electricityCostCalc = selectedPrinter.consumo * printTime * electricityRate;
+            const printerCostCalc = selectedPrinter.coste * 0.0025; // 0.25%
+            const totalProductionCost = filamentCostCalc + electricityCostCalc + printerCostCalc;
+            const salePriceCalc = totalProductionCost * (1 + marginProfit / 100);
+
+            animateResult(filamentCostResult, filamentCostCalc.toFixed(2) + '€');
+            animateResult(electricityCostResult, electricityCostCalc.toFixed(2) + '€');
+            animateResult(printerCostResult, printerCostCalc.toFixed(2) + '€');
+            animateResult(totalCostResult, totalProductionCost.toFixed(2) + '€');
+            animateResult(salePriceResult, salePriceCalc.toFixed(2) + '€');
+        }
+
+        // Animar resultados
+        function animateResult(element, value) {
+            element.textContent = value;
+            element.classList.add('updated');
+            setTimeout(() => element.classList.remove('updated'), 500);
+        }
+
+        // Event Listeners
+        printerSearchInput.addEventListener('input', (e) => {
+            showPrinterDropdown(filterPrinters(e.target.value));
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!printerSearchInput.contains(e.target) && !printerDropdown.contains(e.target)) {
+                printerDropdown.style.display = 'none';
+            }
+        });
+
+        timeUnitBtn.addEventListener('click', toggleTimeUnit);
+        calculateBtn.addEventListener('click', calculateCosts);
+
+        [filamentCostInput, filamentGramsInput, printTimeInput, selectedRateSelect].forEach(input => {
+            input.required = true;
+            input.addEventListener('input', () => validateField(input));
+        });
+    </script>
+</body>
+</html>
