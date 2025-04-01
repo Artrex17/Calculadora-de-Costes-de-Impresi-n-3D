@@ -81,7 +81,7 @@
             color: #fbbf24;
         }
 
-        input, select {
+        input:not([type="range"]), select {
             padding: 0.75rem;
             background-color: #1e293b;
             color: #4ade80;
@@ -91,13 +91,13 @@
             transition: border-color 0.3s, box-shadow 0.3s;
         }
 
-        input:focus, select:focus {
+        input:not([type="range"]):focus, select:focus {
             border-color: #22c55e;
             box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
             outline: none;
         }
 
-        input.error, select.error {
+        input:not([type="range"]).error, select.error {
             border-color: #b91c1c;
             box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
         }
@@ -218,6 +218,64 @@
             from { opacity: 0; transform: scale(0.9); }
             to { opacity: 1; transform: scale(1); }
         }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #1e293b;
+            border: 1px solid #047857;
+            border-radius: 5px;
+            outline: none;
+            padding: 0;
+            margin: 0;
+            transition: border-color 0.3s;
+        }
+
+        input[type="range"]:hover,
+        input[type="range"]:focus {
+            border-color: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #22c55e;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(34, 197, 94, 0.5);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #22c55e;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(34, 197, 94, 0.5);
+            border: none;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider-value {
+            color: #bbf7d0;
+            font-size: 0.9rem;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -263,10 +321,16 @@
 
                 <div class="input-group">
                     <label class="optional" for="marginProfit">Margen de Beneficio (%)</label>
-                    <input type="number" id="marginProfit" step="1" placeholder="Ej: 30">
+                    <div class="slider-container">
+                        <input type="range" id="marginProfit" min="0" max="1000" value="30">
+                        <span class="slider-value" id="marginProfitValue">30%</span>
+                    </div>
                 </div>
 
-                <button id="calculateBtn">Calcular Costes</button>
+                <div class="button-group">
+                    <button id="calculateBtn">Calcular Costes</button>
+                    <button id="roundBtn">Redondear Precio</button>
+                </div>
             </div>
 
             <div class="results">
@@ -285,7 +349,6 @@
     </div>
 
     <script>
-        // Base de datos de impresoras con consumo, coste e imágenes (URLs públicas como ejemplo)
         const printerDatabase = [
             { marca: 'Prusa', modelo: 'MK3S+', consumo: 0.12, coste: 799, image: 'https://www.prusa3d.com/content/images/product/mk3splus_kit_600x600.png' },
             { marca: 'Prusa', modelo: 'Mini+', consumo: 0.08, coste: 459, image: 'https://www.prusa3d.com/content/images/product/mini_plus_600x600.png' },
@@ -314,11 +377,10 @@
             { marca: 'Bambu Lab', modelo: 'X1', consumo: 0.25, coste: 999, image: 'https://www.bambulab.com/cdn/shop/products/X1_600x600.png' }
         ];
 
-        // Variables globales
         let selectedPrinter = null;
         let printTimeUnit = 'horas';
+        let lastSalePrice = 0;
 
-        // Elementos del DOM
         const printerSearchInput = document.getElementById('printerSearch');
         const printerDropdown = document.getElementById('printerDropdown');
         const filamentCostInput = document.getElementById('filamentCostPerKg');
@@ -326,8 +388,10 @@
         const printTimeInput = document.getElementById('printTime');
         const timeUnitBtn = document.getElementById('timeUnitBtn');
         const selectedRateSelect = document.getElementById('selectedRate');
-        const marginProfitInput = document.getElementById('marginProfit');
+        const marginProfitSlider = document.getElementById('marginProfit');
+        const marginProfitValue = document.getElementById('marginProfitValue');
         const calculateBtn = document.getElementById('calculateBtn');
+        const roundBtn = document.getElementById('roundBtn');
         const filamentCostResult = document.getElementById('filamentCostResult');
         const electricityCostResult = document.getElementById('electricityCostResult');
         const printerCostResult = document.getElementById('printerCostResult');
@@ -336,7 +400,6 @@
         const selectedPrinterInfo = document.getElementById('selectedPrinterInfo');
         const printerImageContainer = document.getElementById('printerImageContainer');
 
-        // Filtrar impresoras
         function filterPrinters(searchText) {
             if (!searchText) return [];
             return printerDatabase.filter(printer => 
@@ -344,7 +407,6 @@
             );
         }
 
-        // Mostrar dropdown con imágenes
         function showPrinterDropdown(printers) {
             printerDropdown.innerHTML = '';
             printers.forEach(printer => {
@@ -371,7 +433,6 @@
             printerDropdown.style.display = printers.length > 0 ? 'block' : 'none';
         }
 
-        // Actualizar imagen de la impresora seleccionada
         function updatePrinterImage(imageUrl) {
             printerImageContainer.innerHTML = '';
             if (imageUrl) {
@@ -383,19 +444,16 @@
             }
         }
 
-        // Cambiar unidad de tiempo
         function toggleTimeUnit() {
             printTimeUnit = printTimeUnit === 'horas' ? 'minutos' : 'horas';
             timeUnitBtn.textContent = printTimeUnit;
         }
 
-        // Ajustar tiempo
         function adjustedPrintTime() {
             const time = parseFloat(printTimeInput.value) || 0;
             return printTimeUnit === 'minutos' ? time / 60 : time;
         }
 
-        // Validar campo
         function validateField(input) {
             if (!input.value && input.required) {
                 input.classList.add('error');
@@ -405,7 +463,6 @@
             return true;
         }
 
-        // Calcular costes con animación
         function calculateCosts() {
             const validPrinter = selectedPrinter !== null;
             const validFilamentCost = validateField(filamentCostInput);
@@ -422,13 +479,15 @@
             const filamentConsumedGrams = parseFloat(filamentGramsInput.value);
             const printTime = adjustedPrintTime();
             const electricityRate = parseFloat(selectedRateSelect.value);
-            const marginProfit = parseFloat(marginProfitInput.value || 0);
+            const marginProfit = parseFloat(marginProfitSlider.value);
 
             const filamentCostCalc = (filamentCostPerKg / 1000) * filamentConsumedGrams;
             const electricityCostCalc = selectedPrinter.consumo * printTime * electricityRate;
-            const printerCostCalc = selectedPrinter.coste * 0.0025; // 0.25%
+            const printerCostCalc = selectedPrinter.coste * 0.0025;
             const totalProductionCost = filamentCostCalc + electricityCostCalc + printerCostCalc;
             const salePriceCalc = totalProductionCost * (1 + marginProfit / 100);
+
+            lastSalePrice = salePriceCalc;
 
             animateResult(filamentCostResult, filamentCostCalc.toFixed(2) + '€');
             animateResult(electricityCostResult, electricityCostCalc.toFixed(2) + '€');
@@ -437,14 +496,25 @@
             animateResult(salePriceResult, salePriceCalc.toFixed(2) + '€');
         }
 
-        // Animar resultados
+        function roundSalePrice() {
+            if (lastSalePrice === 0) {
+                alert('Primero calcula los costes antes de redondear.');
+                return;
+            }
+            const roundedPrice = Math.round(lastSalePrice);
+            animateResult(salePriceResult, roundedPrice.toFixed(2) + '€');
+        }
+
         function animateResult(element, value) {
             element.textContent = value;
             element.classList.add('updated');
             setTimeout(() => element.classList.remove('updated'), 500);
         }
 
-        // Event Listeners
+        marginProfitSlider.addEventListener('input', () => {
+            marginProfitValue.textContent = `${marginProfitSlider.value}%`;
+        });
+
         printerSearchInput.addEventListener('input', (e) => {
             showPrinterDropdown(filterPrinters(e.target.value));
         });
@@ -457,6 +527,7 @@
 
         timeUnitBtn.addEventListener('click', toggleTimeUnit);
         calculateBtn.addEventListener('click', calculateCosts);
+        roundBtn.addEventListener('click', roundSalePrice);
 
         [filamentCostInput, filamentGramsInput, printTimeInput, selectedRateSelect].forEach(input => {
             input.required = true;
